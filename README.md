@@ -43,37 +43,37 @@ Agent 层 (4个 Agent)
 
 ```
 用户请求
-  ├── 并行执行 ──┬── 景点搜索 Agent → 高德 POI 2.0
-  │              ├── 天气查询 Agent → 高德天气 API
-  │              └── 酒店推荐 Agent → 高德周边搜索
+  ├── 三 Agent 并行 ──┬── 景点搜索 Agent → 高德 POI 2.0
+  │                   ├── 天气查询 Agent → 高德天气 API
+  │                   └── 酒店推荐 Agent → 高德周边搜索
   │
-  └── 串行执行 ──── 规划协调 Agent → 生成三档方案
+  └── 三档并行生成 ──── 规划协调 Agent（economic / comfort / luxury 并行）
 ```
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Python 3.10+
+- Python 3.10 ~ 3.13（3.14+ 部分依赖不兼容）
 - Node.js 18+
-- 高德地图 API Key（[申请地址](https://console.amap.com/dev/key/app)）
-- LLM API Key（OpenAI 兼容接口）
+- 高德地图 API Key（[申请地址](https://console.amap.com/dev/key/app)）— 需要 **Web服务** 和 **Web端(JS API)** 两个类型
+- LLM API Key（OpenAI 兼容接口，支持 DeepSeek 等）
 
 ### 后端启动
 
 ```bash
 cd backend
 
+# 创建虚拟环境（推荐）
+python3 -m venv venv
+source venv/bin/activate
+
 # 安装依赖
 pip install -r requirements.txt
 
 # 配置环境变量
 cp .env.example .env
-# 编辑 .env 文件，填入：
-#   AMAP_API_KEY=你的高德Key
-#   LLM_API_KEY=你的LLM Key
-#   LLM_BASE_URL=https://api.openai.com/v1
-#   LLM_MODEL=gpt-4o
+# 编辑 .env，填入高德 Web服务 Key 和 LLM Key
 
 # 启动服务
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -87,9 +87,9 @@ cd frontend
 # 安装依赖
 npm install
 
-# 修改高德 JS API Key
-# 编辑 index.html，将 YOUR_AMAP_KEY 替换为实际 Key
-# 编辑 src/App.tsx，将 AMAP_KEY 替换为实际 Key
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入高德 Web端(JS API) Key
 
 # 启动开发服务器
 npm run dev
@@ -172,6 +172,7 @@ smart-travel-planning/
 │   │   │   └── amap_client.py         # 高德 API 客户端
 │   │   ├── services/task_manager.py   # 任务状态 + SSE
 │   │   └── utils/budget.py            # 预算分档计算
+│   ├── .env.example               # 后端环境变量模板
 │   └── requirements.txt
 │
 ├── frontend/
@@ -189,6 +190,7 @@ smart-travel-planning/
 │   │   ├── hooks/usePlan.ts           # 规划状态 Hook
 │   │   ├── api/client.ts              # API 客户端
 │   │   └── types/plan.ts              # TypeScript 类型
+│   ├── .env.example               # 前端环境变量模板
 │   ├── index.html
 │   └── package.json
 │
@@ -200,14 +202,24 @@ smart-travel-planning/
 
 ## 🔑 环境变量
 
+**后端（backend/.env）**
+
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `AMAP_API_KEY` | 高德地图 Web API Key | - |
+| `AMAP_API_KEY` | 高德地图 **Web服务** Key | - |
 | `LLM_API_KEY` | LLM API Key | - |
 | `LLM_BASE_URL` | LLM API 地址 | `https://api.openai.com/v1` |
 | `LLM_MODEL` | 模型名称 | `gpt-4o` |
 | `HOST` | 服务监听地址 | `0.0.0.0` |
 | `PORT` | 服务端口 | `8000` |
+
+**前端（frontend/.env）**
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VITE_AMAP_KEY` | 高德地图 **Web端(JS API)** Key | - |
+
+> 注意：高德 Key 分为「Web服务」和「Web端(JS API)」两种类型，后端用前者调用 HTTP API，前端用后者展示地图，两者不能混用。
 
 ## 🛠️ 技术栈
 
