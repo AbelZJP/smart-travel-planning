@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from enum import Enum
 
 
@@ -80,7 +79,7 @@ class DailyPlan(BaseModel):
 class TierPlan(BaseModel):
     daily_plans: List[DailyPlan] = []
     total_cost: float = 0
-    budget_usage: float = 0  # percentage
+    budget_usage: float = Field(0, ge=0, le=100)  # percentage
 
 
 class PlanResult(BaseModel):
