@@ -93,17 +93,32 @@ async def search_hotels(
     hotels = []
     for p in results:
         biz = p.get("biz_ext", {})
-        price_str = biz.get("cost", "0")
+        if not isinstance(biz, dict):
+            biz = {}
+        # cost 可能为字符串、数字、列表，统一安全处理
+        cost = biz.get("cost", "0")
         try:
-            price = float(price_str) if price_str else 300
-        except (ValueError, TypeError):
+            if isinstance(cost, (list, tuple)):
+                price = float(cost[0]) if cost else 300
+            else:
+                price = float(cost) if cost else 300
+        except (ValueError, TypeError, IndexError):
             price = 300
+        # rating 同理
+        rating_raw = biz.get("rating", 0)
+        try:
+            if isinstance(rating_raw, (list, tuple)):
+                rating = float(rating_raw[0]) if rating_raw else 0
+            else:
+                rating = float(rating_raw) if rating_raw else 0
+        except (ValueError, TypeError, IndexError):
+            rating = 0
         hotels.append(
             {
                 "name": p.get("name"),
                 "lng": float(p.get("location", "0,0").split(",")[0]),
                 "lat": float(p.get("location", "0,0").split(",")[1]),
-                "rating": float(biz.get("rating", 0)) or None,
+                "rating": rating or None,
                 "price_per_night": price,
                 "address": p.get("address", ""),
             }

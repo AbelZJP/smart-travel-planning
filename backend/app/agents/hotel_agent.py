@@ -26,16 +26,32 @@ async def search_nearby_hotels(
     hotels = []
     for p in results:
         biz = p.get("biz_ext", {})
+        # 高德 biz_ext 可能为 dict / list / None，统一处理
+        if not isinstance(biz, dict):
+            biz = {}
         try:
-            price = float(biz.get("cost", 0)) if biz.get("cost") else 300
-        except (ValueError, TypeError):
+            cost = biz.get("cost", 0)
+            # cost 可能为字符串、数字、列表
+            if isinstance(cost, (list, tuple)):
+                price = float(cost[0]) if cost else 300
+            else:
+                price = float(cost) if cost else 300
+        except (ValueError, TypeError, IndexError):
             price = 300
+        try:
+            rating_raw = biz.get("rating", 0)
+            if isinstance(rating_raw, (list, tuple)):
+                rating = float(rating_raw[0]) if rating_raw else 0
+            else:
+                rating = float(rating_raw) if rating_raw else 0
+        except (ValueError, TypeError, IndexError):
+            rating = 0
         hotels.append(
             {
                 "name": p.get("name"),
                 "lng": float(p.get("location", "0,0").split(",")[0]),
                 "lat": float(p.get("location", "0,0").split(",")[1]),
-                "rating": float(biz.get("rating", 0)) or 3.5,
+                "rating": rating or 3.5,
                 "price_per_night": price,
                 "address": p.get("address", ""),
             }
