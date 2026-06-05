@@ -88,7 +88,6 @@ HOTEL_PROMPT = ChatPromptTemplate.from_messages(
 
 async def run_hotel_agent(
     destination: str,
-    attractions: List[Dict[str, Any]],
 ) -> Dict[str, List[Dict[str, Any]]]:
     """运行酒店推荐 Agent"""
     llm = ChatOpenAI(
@@ -101,16 +100,16 @@ async def run_hotel_agent(
     agent = create_tool_calling_agent(llm, tools, HOTEL_PROMPT)
     executor = AgentExecutor(agent=agent, tools=tools, verbose=False, max_iterations=8)
 
-    if attractions:
-        center_lng = sum(a.get("lng", 0) for a in attractions) / len(attractions)
-        center_lat = sum(a.get("lat", 0) for a in attractions) / len(attractions)
-        center = f"{center_lng},{center_lat}"
-    else:
-        center = f"116.397,39.908"
+    # 用目的地城市名地理编码获取中心坐标，不再依赖景点结果
+    try:
+        geo = await amap.geocode(destination)
+        center = geo.get("location", "116.397,39.908")
+    except Exception:
+        center = "116.397,39.908"
 
     input_text = (
-        f"目的地: {destination}，景点中心坐标: {center}，"
-        f"景点列表: {attractions[:5]}。请为 economy/comfort/luxury 三个档位分别搜索推荐酒店。"
+        f"目的地: {destination}，城市中心坐标: {center}。"
+        f"请为 economy/comfort/luxury 三个档位分别搜索推荐酒店。"
     )
     result = await executor.ainvoke({"input": input_text})
     output = result.get("output", "{}")

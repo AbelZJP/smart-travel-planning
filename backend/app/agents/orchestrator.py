@@ -13,17 +13,17 @@ from app.agents.planner_agent import run_planner_agent
 async def run_travel_planning(task_id: str, request: PlanRequest):
     """编排执行完整的旅行规划流程。
 
-    1. 并行运行景点搜索、天气查询 Agent
-    2. 运行酒店推荐 Agent（依赖景点坐标）
-    3. 运行规划协调 Agent
-    4. 通过 SSE 实时推送进度
+    1. 三个 Agent 完全并行执行
+    2. 等待全部完成后运行规划协调 Agent
+    3. 通过 SSE 实时推送进度
     """
     try:
         await task_manager.update_status(task_id, TaskStatus.running)
 
-        # --- Phase 1: 并行执行景点搜索 + 天气查询 ---
+        # --- Phase 1: 三个 Agent 并行执行 ---
         await task_manager.push_event(task_id, "agent_started", {"agent": "attractions"})
         await task_manager.push_event(task_id, "agent_started", {"agent": "weather"})
+        await task_manager.push_event(task_id, "agent_started", {"agent": "hotels"})
 
         attractions_task = asyncio.create_task(
             run_attraction_agent(
@@ -39,9 +39,12 @@ async def run_travel_planning(task_id: str, request: PlanRequest):
                 days=request.days,
             )
         )
+        hotels_task = asyncio.create_task(
+            run_hotel_agent(destination=request.destination)
+        )
 
-        attractions, weather = await asyncio.gather(
-            attractions_task, weather_task, return_exceptions=True
+        attractions, weather, hotels = await asyncio.gather(
+            attractions_task, weather_task, hotels_task, return_exceptions=True
         )
 
         # 处理景点结果
@@ -72,13 +75,7 @@ async def run_travel_planning(task_id: str, request: PlanRequest):
             )
         await task_manager.update_status(task_id, TaskStatus.weather_done)
 
-        # --- Phase 2: 酒店推荐（依赖景点坐标） ---
-        await task_manager.push_event(task_id, "agent_started", {"agent": "hotels"})
-
-        hotels = await run_hotel_agent(
-            destination=request.destination,
-            attractions=attractions if isinstance(attractions, list) else [],
-        )
+        # 处理酒店结果
         if isinstance(hotels, Exception):
             await task_manager.push_event(
                 task_id, "agent_failed",
@@ -92,7 +89,7 @@ async def run_travel_planning(task_id: str, request: PlanRequest):
             )
         await task_manager.update_status(task_id, TaskStatus.hotels_done)
 
-        # --- Phase 3: 规划协调 ---
+        # --- Phase 2: 规划协调 ---
         await task_manager.update_status(task_id, TaskStatus.planning)
         await task_manager.push_event(task_id, "planning_started", {})
 
