@@ -5,9 +5,9 @@ from app.config import settings
 
 AMAP_BASE = "https://restapi.amap.com/v3"
 
-# 个人开发者 QPS 限制，串行化请求 + 间隔
-_amap_semaphore = asyncio.Semaphore(1)
-_REQUEST_GAP = 0.6  # 每次请求间隔 600ms
+# 请求间隔控制，避免短时间突发超 QPS
+_amap_semaphore = asyncio.Semaphore(3)
+_REQUEST_GAP = 0.1  # 每次请求间隔 100ms
 _last_request_time = 0.0
 
 
