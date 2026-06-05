@@ -5,6 +5,11 @@ from app.config import settings
 
 AMAP_BASE = "https://restapi.amap.com/v3"
 
+# 个人开发者 QPS 限制，串行化请求 + 间隔
+_amap_semaphore = asyncio.Semaphore(1)
+_REQUEST_GAP = 0.6  # 每次请求间隔 600ms
+_last_request_time = 0.0
+
 
 class AmapError(Exception):
     """高德地图 API 错误"""
@@ -30,14 +35,39 @@ class AmapClient:
             self._client = None
 
     async def _get(self, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        client = await self._get_client()
-        params["key"] = self.key
-        resp = await client.get(f"{AMAP_BASE}{path}", params=params)
-        resp.raise_for_status()
-        data = resp.json()
-        if data.get("status") != "1":
-            raise AmapError(f"Amap API error: {data.get('info', 'unknown')}")
-        return data
+        """带限流和重试的 API 请求"""
+        global _last_request_time
+
+        async with _amap_semaphore:
+            # 强制请求间隔，避免超 QPS
+            now = asyncio.get_event_loop().time()
+            gap = _REQUEST_GAP - (now - _last_request_time)
+            if gap > 0:
+                await asyncio.sleep(gap)
+
+            for attempt in range(4):
+                try:
+                    client = await self._get_client()
+                    params["key"] = self.key
+                    resp = await client.get(f"{AMAP_BASE}{path}", params=params)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    if data.get("status") != "1":
+                        info = data.get("info", "unknown")
+                        # QPS 超限，等一等重试
+                        if "EXCEEDED" in str(info).upper() or "LIMIT" in str(info).upper():
+                            wait = 1.5 * (attempt + 1)
+                            await asyncio.sleep(wait)
+                            continue
+                        raise AmapError(f"Amap API error: {info}")
+                    return data
+                except httpx.RequestError:
+                    if attempt < 3:
+                        await asyncio.sleep(1 * (attempt + 1))
+                        continue
+                    raise
+
+            raise AmapError("Amap API request failed after 4 retries")
 
     async def search_poi(
         self,
