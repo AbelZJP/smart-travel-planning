@@ -5,7 +5,7 @@ import ProgressPanel from './components/ProgressPanel';
 import ResultPanel from './components/ResultPanel';
 import { usePlan } from './hooks/usePlan';
 
-const AMAP_KEY = 'YOUR_AMAP_KEY';
+const AMAP_KEY = import.meta.env.VITE_AMAP_KEY || '';
 
 const App: React.FC = () => {
   const {
