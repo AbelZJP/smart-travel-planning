@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 from typing import Optional, List, Dict, Any
 from app.config import settings
@@ -5,14 +6,22 @@ from app.config import settings
 AMAP_BASE = "https://restapi.amap.com/v3"
 
 
+class AmapError(Exception):
+    """高德地图 API 错误"""
+    pass
+
+
 class AmapClient:
     def __init__(self):
         self.key = settings.amap_api_key
         self._client: Optional[httpx.AsyncClient] = None
+        self._lock = asyncio.Lock()
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=httpx.Timeout(15.0))
+            async with self._lock:
+                if self._client is None:
+                    self._client = httpx.AsyncClient(timeout=httpx.Timeout(15.0))
         return self._client
 
     async def close(self):
@@ -27,7 +36,7 @@ class AmapClient:
         resp.raise_for_status()
         data = resp.json()
         if data.get("status") != "1":
-            raise Exception(f"Amap API error: {data.get('info', 'unknown')}")
+            raise AmapError(f"Amap API error: {data.get('info', 'unknown')}")
         return data
 
     async def search_poi(
@@ -111,11 +120,11 @@ class AmapClient:
         """生成高德静态图 URL"""
         base = "https://restapi.amap.com/v3/staticmap"
         marker_str = ""
-        for i, m in enumerate(markers):
+        for m in markers:
             style = "mid,0xFF6B6B,A" if m.get("type") == "hotel" else "mid,0x3B82F6,"
             marker_str += f"&markers={style}:{m['lng']},{m['lat']}"
         path = ",".join(f"{p}" for p in path_points[:8])  # max 8 waypoints
-        url = f"{base}?key={self.key}&size={size}&scale=2&zoom=13"
+        url = f"{base}?key={self.key}&size={size}&scale=2&zoom=13{marker_str}"
         if path_points:
             url += f"&path=0x3B82F6,2,0:{path}"
         return url
