@@ -97,15 +97,86 @@ npm run dev
 
 打开浏览器访问 http://localhost:3000
 
-### 生产构建
+## 🚢 生产部署（腾讯云轻量服务器）
+
+### 前端构建 + Nginx 托管
 
 ```bash
-# 前端构建
-cd frontend && npm run build
-
-# 后端部署（使用 gunicorn）
-cd backend && gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
+cd frontend
+npm run build   # 产出 dist/ 目录
+sudo cp -r dist /var/www/travel-planning
 ```
+
+Nginx 配置（`/etc/nginx/sites-enabled/travel-planning`）：
+
+```nginx
+server {
+    listen 80;
+    server_name _;   # 替换为你的域名
+
+    # 前端静态文件
+    root /var/www/travel-planning;
+    index index.html;
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API 反向代理到后端
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection '';
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;  # SSE 需要关闭缓冲
+    }
+}
+```
+
+> 注意：`proxy_buffering off` 是 SSE 实时进度推送的关键配置，不能省略。
+
+### 后端 Systemd 服务
+
+创建 `/etc/systemd/system/travel-planning.service`：
+
+```ini
+[Unit]
+Description=Smart Travel Planning API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/travel-planning/backend
+EnvironmentFile=/opt/travel-planning/backend/.env
+ExecStart=/opt/travel-planning/backend/venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启动：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable travel-planning
+sudo systemctl start travel-planning
+sudo systemctl status travel-planning
+```
+
+### 安装 HTTPS（可选）
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+---
+
+> 更简单的方案：如果不需要 Nginx，前端 `npm run preview` + 后端 `uvicorn` 直接跑也行——把 `--host 0.0.0.0` 改成你的公网 IP，但生产环境建议用上述 Nginx 反代方案。
 
 ## 📡 API 接口
 
