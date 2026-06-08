@@ -10,7 +10,9 @@ interface ExportButtonProps {
 const ExportButton: React.FC<ExportButtonProps> = ({ resultRef, onExportStart, onExportEnd }) => {
   const [exporting, setExporting] = useState(false);
 
-  const handleExport = async () => {
+  const handleExport = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!resultRef.current) return;
     setExporting(true);
 
@@ -18,8 +20,8 @@ const ExportButton: React.FC<ExportButtonProps> = ({ resultRef, onExportStart, o
       // 1. 先切换到静态图模式
       onExportStart();
 
-      // 2. 等 React 重渲染 + 静态图加载完成
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // 2. 等 React 重渲染完成
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const images = resultRef.current.querySelectorAll('img');
       await Promise.all(
         Array.from(images).map(
@@ -59,7 +61,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({ resultRef, onExportStart, o
   };
 
   return (
-    <button onClick={handleExport} disabled={exporting}
+    <button type="button" onClick={handleExport} disabled={exporting}
       className="w-full py-3 bg-travel-text text-white font-semibold text-sm rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
       {exporting ? (
         <>
