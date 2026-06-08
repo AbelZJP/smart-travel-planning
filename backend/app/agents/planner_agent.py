@@ -13,21 +13,22 @@ PLANNER_PROMPT = ChatPromptTemplate.from_messages(
 ## 用户需求: {user_input}
 ## 景点: {attractions}
 ## 酒店候选: {hotels}
-## 预算目标: ¥{budget_allocation}
 
-## 当前档位: {tier_label}
+## ⚠️ 预算红线（绝对不能超）:
+{budget_allocation}
+
+## 档位参数:
 - 酒店: ≤¥{hotel_budget}/晚
 - 餐饮: ≤¥{meals_budget}/天
 - 交通: {transit_mode}
 
-## 硬性要求:
-1. 总花费控制在预算目标的 95%-105% 之间，不要偏离太多
-2. 每天安排同区域 2-3 个景点
-3. 上午户外、下午室内/半室内（根据天气调整）
-4. 景点间穿插餐饮
-5. 酒店在当天最后景点附近
+## 要求:
+1. ⚠️ 总花费必须 ≤ 预算红线，超出则选更便宜的景点/酒店/交通
+2. 每天同区域 2-3 个景点
+3. 景点间穿插餐饮
+4. 酒店在当天最后景点附近
 
-## 输出严格JSON（不要markdown代码块）:
+## 输出严格JSON（不要markdown）:
 {{
   "daily_plans": [
     {{
@@ -102,6 +103,12 @@ async def _plan_one_tier(
 ) -> tuple:
     """为单个档位生成行程"""
     meta = TIER_META[tier]
+    target = budget_allocation.get("target_total", 0)
+    budget_detail = (
+        f"总预算上限: ¥{target}（含往返交通约¥{budget_allocation.get('intercity', 0)}，"
+        f"住宿≤¥{budget_allocation.get('hotel', 0)}，餐饮≤¥{budget_allocation.get('meals', 0)}，"
+        f"门票≤¥{budget_allocation.get('tickets', 0)}，市内交通≤¥{budget_allocation.get('transit', 0)}）"
+    )
     chain = PLANNER_PROMPT | llm
     response = await chain.ainvoke(
         {
@@ -110,7 +117,7 @@ async def _plan_one_tier(
             "attractions": str(attractions),
             "weather": str(weather),
             "hotels": str(hotels.get(tier, [])),
-            "budget_allocation": str(budget_allocation),
+            "budget_allocation": budget_detail,
             "hotel_budget": meta["hotel_budget"],
             "meals_budget": meta["meals_budget"],
             "transit_mode": meta["transit_mode"],

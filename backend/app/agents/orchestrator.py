@@ -151,10 +151,13 @@ async def run_travel_planning(task_id: str, request: PlanRequest):
                         ],
                     )
                 )
+            total = tier_data.get("total_cost", 0)
+            usage = round(total / request.budget * 100, 1) if request.budget > 0 else 0
+
             return TierPlan(
                 daily_plans=daily_plans,
-                total_cost=tier_data.get("total_cost", 0),
-                budget_usage=tier_data.get("budget_usage", 0),
+                total_cost=total,
+                budget_usage=usage,
             )
 
         result = PlanResult(
