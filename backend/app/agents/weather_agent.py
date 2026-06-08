@@ -102,32 +102,48 @@ async def run_weather_agent(
     daily = forecasts[0].get("casts", [])
     print(f"[weather_agent] Got {len(daily)} days of forecasts")
 
+    # 建立预报日期索引
+    forecast_dates = {d.get("date", ""): d for d in daily}
+    max_forecast_date = max(forecast_dates.keys()) if forecast_dates else ""
+
     start = datetime.strptime(start_date, "%Y-%m-%d")
     result = []
     for i in range(days):
         travel_date = (start + timedelta(days=i)).strftime("%Y-%m-%d")
-        # 优先精确匹配日期，匹配不到则按序取（高德只给未来4天）
-        if i < len(daily):
-            d = daily[i]
+
+        if travel_date in forecast_dates:
+            # 精确匹配
+            d = forecast_dates[travel_date]
+            is_exact = True
         else:
+            # 超出预报范围，用最后一天做参考并标记
             d = daily[-1] if daily else {}
-        dw = d.get("dayweather", "晴")
-        nw = d.get("nightweather", "多云")
-        high = int(d.get("daytemp", 25))
-        low = int(d.get("nighttemp", 18))
-        wind = f"{d.get('daywind', '')}{d.get('daypower', '')}"
+            is_exact = False
+
+        dw = d.get("dayweather", "")
+        nw = d.get("nightweather", "")
+        high = int(d.get("daytemp", 0))
+        low = int(d.get("nighttemp", 0))
+
+        if is_exact:
+            clothing = _clothing_advice(high, low, dw)
+            travel = _travel_advice(dw, high)
+        else:
+            clothing = "天气暂未发布，穿衣建议仅供参考"
+            travel = f"天气暂未发布（预报仅到{max_forecast_date}），出行建议仅供参考"
 
         result.append({
             "date": travel_date,
-            "day_weather": dw,
-            "night_weather": nw,
+            "day_weather": dw if is_exact else "暂未发布",
+            "night_weather": nw if is_exact else "",
             "high_temp": high,
             "low_temp": low,
-            "wind": wind if wind else "微风",
-            "rain_probability": max(_rain_probability(dw), _rain_probability(nw)),
-            "clothing_advice": _clothing_advice(high, low, dw),
-            "travel_advice": _travel_advice(dw, high),
-            "suitable": "雨" not in dw or "小雨" in dw,
+            "wind": f"{d.get('daywind', '')}{d.get('daypower', '')}" if is_exact else "",
+            "rain_probability": max(_rain_probability(dw), _rain_probability(nw)) if is_exact else 0,
+            "clothing_advice": clothing,
+            "travel_advice": travel,
+            "suitable": is_exact and ("雨" not in dw or "小雨" in dw),
+            "is_forecast": is_exact,
         })
 
     print(f"[weather_agent] Returning {len(result)} days of weather")
