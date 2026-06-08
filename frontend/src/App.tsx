@@ -7,7 +7,7 @@ import PlanningPage from './pages/PlanningPage';
 const App: React.FC = () => {
   return (
     <PlanProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/travel">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/planning" element={<PlanningPage />} />
