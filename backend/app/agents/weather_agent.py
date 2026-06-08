@@ -63,7 +63,14 @@ async def run_weather_agent(
     destination: str, start_date: str, days: int
 ) -> List[Dict[str, Any]]:
     """查询天气并生成建议（无 LLM，毫秒级响应）"""
-    data = await amap.get_weather(destination, extensions="all")
+    # 先地理编码获取 adcode，比直接传城市名更稳定
+    try:
+        geo = await amap.geocode(destination)
+        adcode = geo.get("adcode", destination)
+    except Exception:
+        adcode = destination
+
+    data = await amap.get_weather(adcode, extensions="all")
     forecasts = data.get("forecasts", [])
     if not forecasts:
         return []
