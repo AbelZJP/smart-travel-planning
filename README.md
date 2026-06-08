@@ -1,5 +1,7 @@
 # 🌍 智能旅行规划助手
 
+[![CI/CD](https://github.com/AbelZJP/smart-travel-planning/actions/workflows/deploy.yml/badge.svg)](https://github.com/AbelZJP/smart-travel-planning/actions)
+
 > 输入需求，一键生成专属行程 — 基于多 Agent 协作的智能旅行规划 H5 应用
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
