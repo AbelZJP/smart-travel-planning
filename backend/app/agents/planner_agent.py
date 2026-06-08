@@ -136,8 +136,9 @@ async def run_planner_agent(
     hotels: Dict[str, List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
     """运行规划协调 Agent，三档并行生成"""
+    fast_model = settings.llm_fast_model or settings.llm_model
     llm = ChatOpenAI(
-        model=settings.llm_model,
+        model=fast_model,
         api_key=settings.llm_api_key,
         base_url=settings.llm_base_url,
         temperature=0.5,

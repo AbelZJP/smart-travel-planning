@@ -1,97 +1,99 @@
-from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.tools import tool
+"""天气查询 Agent — 直接调用高德 API，规则化生成穿衣/出行建议，无需 LLM"""
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
-from app.config import settings
 from app.mcp.amap_client import AmapClient
 
 amap = AmapClient()
 
 
-@tool
-async def fetch_weather(city: str) -> Dict[str, Any]:
-    """获取城市天气预报（未来7天）"""
-    data = await amap.get_weather(city, extensions="all")
-    forecasts = data.get("forecasts", [])
-    if not forecasts:
-        return {"city": city, "forecasts": []}
-    daily = forecasts[0].get("casts", [])
-    return {
-        "city": forecasts[0].get("city", city),
-        "forecasts": [
-            {
-                "date": d.get("date"),
-                "day_weather": d.get("dayweather"),
-                "night_weather": d.get("nightweather"),
-                "day_temp": int(d.get("daytemp", 0)),
-                "night_temp": int(d.get("nighttemp", 0)),
-                "day_wind": d.get("daywind", ""),
-                "day_power": d.get("daypower", ""),
-            }
-            for d in daily
-        ],
-    }
+def _clothing_advice(high: int, low: int, weather: str) -> str:
+    """根据温度和天气生成穿衣建议"""
+    if "雨" in weather:
+        return "记得带雨伞，穿防滑鞋"
+    if "雪" in weather:
+        return "注意保暖，穿防滑靴，戴手套围巾"
+    avg = (high + low) / 2
+    if avg > 30:
+        return "建议穿短袖短裤，注意防晒"
+    elif avg > 25:
+        return "建议穿短袖，带一件薄外套"
+    elif avg > 20:
+        return "建议穿薄长袖或短袖+薄外套"
+    elif avg > 15:
+        return "建议穿长袖，早晚加一件外套"
+    elif avg > 10:
+        return "建议穿薄毛衣或卫衣，加一件外套"
+    elif avg > 5:
+        return "建议穿厚毛衣/卫衣+外套"
+    else:
+        return "建议穿羽绒服，注意保暖"
 
 
-WEATHER_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """你是一个天气分析专家。根据天气数据，为旅行提供建议。
+def _travel_advice(weather: str, high: int) -> str:
+    """根据天气生成出行建议"""
+    if "雨" in weather or "雪" in weather:
+        return "建议安排室内景点，备好雨具"
+    if high > 35:
+        return "高温天气，避免正午户外活动，多补水"
+    if "晴" in weather:
+        return "天气晴好，非常适合户外活动"
+    if "多云" in weather or "阴" in weather:
+        return "适合户外活动，体感舒适"
+    return "可以正常出行"
 
-对每一天的天气做分析，输出格式:
-[
-  {{
-    "date": "YYYY-MM-DD",
-    "day_weather": "晴",
-    "night_weather": "多云",
-    "high_temp": 30,
-    "low_temp": 22,
-    "wind": "东北风3级",
-    "rain_probability": 0.1,
-    "clothing_advice": "建议穿短袖，带一件薄外套",
-    "travel_advice": "天气晴好，非常适合户外活动",
-    "suitable": true
-  }},
-  ...
-]""",
-        ),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ]
-)
+
+def _rain_probability(weather: str) -> float:
+    """简单判断降雨概率"""
+    if "暴雨" in weather:
+        return 0.9
+    if "大雨" in weather:
+        return 0.8
+    if "中雨" in weather:
+        return 0.7
+    if "小雨" in weather or "阵雨" in weather or "雷阵雨" in weather:
+        return 0.6
+    if "阴" in weather:
+        return 0.3
+    if "多云" in weather:
+        return 0.15
+    return 0.05
 
 
 async def run_weather_agent(
     destination: str, start_date: str, days: int
 ) -> List[Dict[str, Any]]:
-    """运行天气查询 Agent"""
-    llm = ChatOpenAI(
-        model=settings.llm_model,
-        api_key=settings.llm_api_key,
-        base_url=settings.llm_base_url,
-        temperature=0.1,
-    )
-    tools = [fetch_weather]
-    agent = create_tool_calling_agent(llm, tools, WEATHER_PROMPT)
-    executor = AgentExecutor(agent=agent, tools=tools, verbose=False, max_iterations=3)
+    """查询天气并生成建议（无 LLM，毫秒级响应）"""
+    data = await amap.get_weather(destination, extensions="all")
+    forecasts = data.get("forecasts", [])
+    if not forecasts:
+        return []
 
+    daily = forecasts[0].get("casts", [])
     start = datetime.strptime(start_date, "%Y-%m-%d")
-    date_range = [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
+    date_range = {(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)}
 
-    input_text = f"目的地: {destination}，出发日期: {start_date}，出行天数: {days}天，需要天气的日期: {', '.join(date_range)}。请先获取天气数据，然后分析每天的出行建议。"
+    result = []
+    for d in daily:
+        date = d.get("date", "")
+        if date not in date_range:
+            continue
+        dw = d.get("dayweather", "")
+        nw = d.get("nightweather", "")
+        high = int(d.get("daytemp", 0))
+        low = int(d.get("nighttemp", 0))
+        wind = f"{d.get('daywind', '')}{d.get('daypower', '')}"
 
-    result = await executor.ainvoke({"input": input_text})
-    output = result.get("output", "[]")
+        result.append({
+            "date": date,
+            "day_weather": dw,
+            "night_weather": nw,
+            "high_temp": high,
+            "low_temp": low,
+            "wind": wind if wind else "微风",
+            "rain_probability": max(_rain_probability(dw), _rain_probability(nw)),
+            "clothing_advice": _clothing_advice(high, low, dw),
+            "travel_advice": _travel_advice(dw, high),
+            "suitable": "雨" not in dw or "小雨" in dw,
+        })
 
-    import json
-    import re
-    match = re.search(r"\[.*\]", output, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group())
-        except json.JSONDecodeError:
-            pass
-    return []
+    return result
