@@ -106,7 +106,7 @@ npm run dev
 ```bash
 cd frontend
 npm run build   # 产出 dist/ 目录
-sudo cp -r dist /var/www/travel-planning
+sudo cp -r dist /www/travel-planning
 ```
 
 Nginx 配置（`/etc/nginx/sites-enabled/travel-planning`）：
@@ -117,7 +117,7 @@ server {
     server_name _;   # 替换为你的域名
 
     # 前端静态文件
-    root /var/www/travel-planning;
+    root /www/travel-planning;
     index index.html;
     location / {
         try_files $uri $uri/ /index.html;

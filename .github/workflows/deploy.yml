@@ -43,7 +43,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "=== Deploying frontend ==="
-            rm -rf /var/www/travel-planning/*
+            rm -rf /www/travel-planning/*
             echo "=== Deploying backend ==="
             mkdir -p /opt/travel-planning
 
@@ -52,7 +52,7 @@ jobs:
         with:
           switches: -avz --delete
           path: frontend/dist/
-          remote_path: /var/www/travel-planning/
+          remote_path: /www/travel-planning/
           remote_host: ${{ secrets.SERVER_IP }}
           remote_user: ${{ secrets.SERVER_USER }}
           remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
