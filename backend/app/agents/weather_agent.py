@@ -63,19 +63,44 @@ async def run_weather_agent(
     destination: str, start_date: str, days: int
 ) -> List[Dict[str, Any]]:
     """查询天气并生成建议（无 LLM，毫秒级响应）"""
-    # 先地理编码获取 adcode，比直接传城市名更稳定
+    import traceback
+
+    # 先地理编码获取 adcode，失败则直接用城市名
+    adcode = destination
     try:
         geo = await amap.geocode(destination)
         adcode = geo.get("adcode", destination)
     except Exception:
-        adcode = destination
+        pass  # fallback to city name
 
-    data = await amap.get_weather(adcode, extensions="all")
+    try:
+        data = await amap.get_weather(adcode, extensions="all")
+    except Exception as e:
+        print(f"[weather_agent] API error: {e}, adcode={adcode}, destination={destination}")
+        traceback.print_exc()
+        # 降级为实时天气
+        try:
+            data = await amap.get_weather(destination, extensions="base")
+        except Exception:
+            return []
+
     forecasts = data.get("forecasts", [])
     if not forecasts:
+        print(f"[weather_agent] No forecasts returned, adcode={adcode}")
+        # 尝试用城市名再查一次
+        if adcode != destination:
+            try:
+                data = await amap.get_weather(destination, extensions="all")
+                forecasts = data.get("forecasts", [])
+            except Exception:
+                pass
+
+    if not forecasts:
+        print("[weather_agent] Still no forecasts after retry")
         return []
 
     daily = forecasts[0].get("casts", [])
+    print(f"[weather_agent] Got {len(daily)} days of forecasts")
     start = datetime.strptime(start_date, "%Y-%m-%d")
     date_range = {(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)}
 
@@ -103,4 +128,5 @@ async def run_weather_agent(
             "suitable": "雨" not in dw or "小雨" in dw,
         })
 
+    print(f"[weather_agent] Returning {len(result)} days of weather")
     return result
