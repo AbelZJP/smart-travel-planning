@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import type { PlanResult, TierKey } from '../types/plan';
 import { TIER_LABELS } from '../types/plan';
 import DailyCard from './DailyCard';
@@ -16,8 +16,12 @@ const TIERS: TierKey[] = ['economy', 'comfort', 'luxury'];
 
 const ResultPanel: React.FC<ResultPanelProps> = ({ result, activeTier, onTierChange, amapKey }) => {
   const resultRef = useRef<HTMLDivElement>(null);
+  const [exportMode, setExportMode] = useState(false);
   const plan = result.plans[activeTier];
   const totalBudget = result.input.budget;
+
+  const handleExportStart = useCallback(() => setExportMode(true), []);
+  const handleExportEnd = useCallback(() => setExportMode(false), []);
 
   return (
     <div className="mx-4 mt-4 space-y-4" ref={resultRef}>
@@ -42,7 +46,7 @@ const ResultPanel: React.FC<ResultPanelProps> = ({ result, activeTier, onTierCha
       <div className="space-y-3">
         {plan.daily_plans.map((dayPlan, idx) => (
           <DailyCard key={`${activeTier}-day-${idx}`} plan={dayPlan} dayIndex={idx}
-            totalDays={plan.daily_plans.length} exportMode={false} amapKey={amapKey} />
+            totalDays={plan.daily_plans.length} exportMode={exportMode} amapKey={amapKey} />
         ))}
       </div>
 
@@ -52,7 +56,11 @@ const ResultPanel: React.FC<ResultPanelProps> = ({ result, activeTier, onTierCha
       )}
 
       {/* Export */}
-      <ExportButton resultRef={resultRef} />
+      <ExportButton
+        resultRef={resultRef}
+        onExportStart={handleExportStart}
+        onExportEnd={handleExportEnd}
+      />
     </div>
   );
 };

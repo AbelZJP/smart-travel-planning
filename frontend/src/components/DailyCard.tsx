@@ -29,10 +29,29 @@ const DailyCard: React.FC<DailyCardProps> = ({ plan, dayIndex, totalDays, export
           <span className="text-xs text-travel-muted">{dayIndex + 1}/{totalDays}</span>
         </div>
         {plan.weather && (
-          <div className="flex items-center gap-2 mt-1 text-xs text-travel-muted">
-            <span>{weatherEmoji(plan.weather.day_weather)}</span>
-            <span>{plan.weather.day_weather} {plan.weather.low_temp}°C ~ {plan.weather.high_temp}°C</span>
-            {plan.weather.clothing_advice && <span className="text-gray-400">· {plan.weather.clothing_advice}</span>}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80">
+              <span>{weatherEmoji(plan.weather.day_weather)}</span>
+              <span className="font-medium">{plan.weather.day_weather}</span>
+            </span>
+            <span className="text-travel-muted">
+              🌡 {plan.weather.low_temp}°C ~ {plan.weather.high_temp}°C
+            </span>
+            {plan.weather.wind && (
+              <span className="text-travel-muted">💨 {plan.weather.wind}</span>
+            )}
+          </div>
+        )}
+        {plan.weather?.clothing_advice && (
+          <div className="mt-1.5 flex items-start gap-1 text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+            <span>👔</span>
+            <span>{plan.weather.clothing_advice}</span>
+          </div>
+        )}
+        {plan.weather?.travel_advice && (
+          <div className="mt-1 flex items-start gap-1 text-xs text-travel-green bg-green-50 rounded-lg px-2.5 py-1.5">
+            <span>💡</span>
+            <span>{plan.weather.travel_advice}</span>
           </div>
         )}
       </div>

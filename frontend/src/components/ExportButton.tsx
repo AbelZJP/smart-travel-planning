@@ -3,23 +3,39 @@ import html2canvas from 'html2canvas';
 
 interface ExportButtonProps {
   resultRef: React.RefObject<HTMLDivElement | null>;
+  onExportStart: () => void;
+  onExportEnd: () => void;
 }
 
-const ExportButton: React.FC<ExportButtonProps> = ({ resultRef }) => {
+const ExportButton: React.FC<ExportButtonProps> = ({ resultRef, onExportStart, onExportEnd }) => {
   const [exporting, setExporting] = useState(false);
 
   const handleExport = async () => {
     if (!resultRef.current) return;
     setExporting(true);
+
     try {
-      const mapContainers = resultRef.current.querySelectorAll('[data-map-container]');
-      mapContainers.forEach((el) => {
-        el.setAttribute('data-export-mode', 'true');
-        el.dispatchEvent(new CustomEvent('exportModeChange', { bubbles: true }));
-      });
+      // 1. 先切换到静态图模式
+      onExportStart();
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // 2. 等 React 重渲染 + 静态图加载完成
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const images = resultRef.current.querySelectorAll('img');
+      await Promise.all(
+        Array.from(images).map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete) resolve();
+              else {
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              }
+            })
+        )
+      );
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
+      // 3. 截图
       const canvas = await html2canvas(resultRef.current, {
         backgroundColor: '#F0FDF4',
         scale: 2,
@@ -28,18 +44,16 @@ const ExportButton: React.FC<ExportButtonProps> = ({ resultRef }) => {
         logging: false,
       });
 
+      // 4. 下载
       const link = document.createElement('a');
       link.download = `旅行规划_${new Date().toISOString().slice(0, 10)}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-
-      mapContainers.forEach((el) => {
-        el.removeAttribute('data-export-mode');
-        el.dispatchEvent(new CustomEvent('exportModeChange', { bubbles: true }));
-      });
     } catch (err) {
       console.error('Export failed:', err);
     } finally {
+      // 5. 恢复动态地图
+      onExportEnd();
       setExporting(false);
     }
   };
