@@ -79,7 +79,7 @@ class DailyPlan(BaseModel):
 class TierPlan(BaseModel):
     daily_plans: List[DailyPlan] = []
     total_cost: float = 0
-    budget_usage: float = Field(0, ge=0, le=100)  # percentage
+    budget_usage: float = Field(0, ge=0)  # percentage, allow >100 for over-budget
 
 
 class PlanResult(BaseModel):
