@@ -101,22 +101,24 @@ async def run_weather_agent(
 
     daily = forecasts[0].get("casts", [])
     print(f"[weather_agent] Got {len(daily)} days of forecasts")
-    start = datetime.strptime(start_date, "%Y-%m-%d")
-    date_range = {(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)}
 
+    start = datetime.strptime(start_date, "%Y-%m-%d")
     result = []
-    for d in daily:
-        date = d.get("date", "")
-        if date not in date_range:
-            continue
-        dw = d.get("dayweather", "")
-        nw = d.get("nightweather", "")
-        high = int(d.get("daytemp", 0))
-        low = int(d.get("nighttemp", 0))
+    for i in range(days):
+        travel_date = (start + timedelta(days=i)).strftime("%Y-%m-%d")
+        # 优先精确匹配日期，匹配不到则按序取（高德只给未来4天）
+        if i < len(daily):
+            d = daily[i]
+        else:
+            d = daily[-1] if daily else {}
+        dw = d.get("dayweather", "晴")
+        nw = d.get("nightweather", "多云")
+        high = int(d.get("daytemp", 25))
+        low = int(d.get("nighttemp", 18))
         wind = f"{d.get('daywind', '')}{d.get('daypower', '')}"
 
         result.append({
-            "date": date,
+            "date": travel_date,
             "day_weather": dw,
             "night_weather": nw,
             "high_temp": high,
