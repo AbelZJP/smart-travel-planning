@@ -115,15 +115,23 @@ async def run_travel_planning(task_id: str, request: PlanRequest):
             MealItem, TransportItem, RouteCoordinate,
         )
 
+        # 建立日期 → 天气的映射
+        weather_map = {}
+        if isinstance(weather, list):
+            for w in weather:
+                weather_map[w.get("date", "")] = w
+
         def build_tier_plan(tier_data: dict) -> TierPlan:
             if not tier_data:
                 return TierPlan()
             daily_plans = []
             for dp_data in tier_data.get("daily_plans", []):
+                date = dp_data.get("date", "")
                 daily_plans.append(
                     DailyPlan(
                         day=dp_data.get("day", 1),
-                        date=dp_data.get("date", ""),
+                        date=date,
+                        weather=weather_map.get(date),
                         attractions=[
                             AttractionItem(**a)
                             for a in dp_data.get("attractions", [])
