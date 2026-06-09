@@ -133,7 +133,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ onSubmit, loading }) => {
         <label className="block text-xs font-medium text-travel-muted mb-1">📅 出发日期</label>
         <input type="date" value={startDate} min={today}
           onChange={(e) => setStartDate(e.target.value)}
-          className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-travel-blue/30 focus:border-travel-blue transition bg-white" />
+          className="w-full min-w-0 px-3 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-travel-blue/30 focus:border-travel-blue transition bg-white" />
       </div>
 
       {/* Days */}
