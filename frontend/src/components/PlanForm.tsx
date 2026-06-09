@@ -60,7 +60,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ onSubmit, loading }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mx-4 p-5 bg-white rounded-card shadow-md space-y-5"
+      className="mx-4 p-5 bg-white rounded-card shadow-md space-y-5 overflow-hidden"
     >
       {/* Origin & Destination */}
       <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ onSubmit, loading }) => {
         <label className="block text-xs font-medium text-travel-muted mb-1">📅 出发日期</label>
         <input type="date" value={startDate} min={today}
           onChange={(e) => setStartDate(e.target.value)}
-          className="w-full min-w-0 px-3 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-travel-blue/30 focus:border-travel-blue transition bg-white" />
+          className="w-full max-w-full box-border px-3 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-travel-blue/30 focus:border-travel-blue transition bg-white" />
       </div>
 
       {/* Days */}
