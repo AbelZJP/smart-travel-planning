@@ -12,6 +12,12 @@ body {
   min-height: 100vh;
 }
 
+/* 修复移动端日期输入框超出容器 */
+input[type="date"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
