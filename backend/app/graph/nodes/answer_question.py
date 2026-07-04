@@ -21,6 +21,7 @@ from langchain_core.messages import (
     AIMessageChunk,
     ToolMessage,
 )
+from langchain_core.runnables import RunnableConfig
 
 from app.graph.state import GraphState
 from app.llm.factory import get_smart_llm
@@ -75,7 +76,7 @@ TOOL_GUIDE = """
 """
 
 
-async def answer_question_node(state: GraphState) -> dict:
+async def answer_question_node(state: GraphState, config: RunnableConfig) -> dict:
     """回答用户问题，可自主调用高德工具查询实时信息"""
     messages = state.get("messages", [])
     plan = state.get("plan")
@@ -117,7 +118,7 @@ async def answer_question_node(state: GraphState) -> dict:
         # 流式输出：最终答案 token 经 on_chat_model_stream → chat_token 实时推送
         accumulated = AIMessageChunk(content="")
         try:
-            async for chunk in llm.astream(convo):
+            async for chunk in llm.astream(convo, config=config):
                 accumulated += chunk
         except Exception as e:
             return {"messages": [AIMessage(content=f"回答生成失败：{e}")]}
@@ -141,7 +142,7 @@ async def answer_question_node(state: GraphState) -> dict:
                 ))
                 continue
             try:
-                result = await tool.ainvoke(tc.get("args", {}))
+                result = await tool.ainvoke(tc.get("args", {}), config=config)
                 result_str = result if isinstance(result, str) else json.dumps(
                     result, ensure_ascii=False
                 )
@@ -153,8 +154,9 @@ async def answer_question_node(state: GraphState) -> dict:
     try:
         final_acc = AIMessageChunk(content="")
         async for chunk in base_llm.astream(
-            convo + [HumanMessage(content="请根据已获取的信息直接回答用户，不要再调用工具。")]
-        ):
+                convo + [HumanMessage(content="请根据已获取的信息直接回答用户，不要再调用工具。")],
+                config=config,
+            ):
             final_acc += chunk
         return {"messages": [AIMessage(content=final_acc.content)]}
     except Exception:
