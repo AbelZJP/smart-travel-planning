@@ -17,6 +17,23 @@ export default {
       borderRadius: {
         card: '16px',
       },
+      keyframes: {
+        breathing: {
+          '0%, 100%': {
+            transform: 'scale(1)',
+            boxShadow:
+              '0 4px 14px rgba(59, 130, 246, 0.25), 0 0 0 0 rgba(16, 185, 129, 0.25)',
+          },
+          '50%': {
+            transform: 'scale(1.015)',
+            boxShadow:
+              '0 10px 28px rgba(59, 130, 246, 0.45), 0 0 0 8px rgba(16, 185, 129, 0)',
+          },
+        },
+      },
+      animation: {
+        breathing: 'breathing 1.6s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

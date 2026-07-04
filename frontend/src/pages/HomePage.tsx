@@ -22,9 +22,9 @@ const HomePage: React.FC = () => {
       <div className="mx-4 mb-4">
         <button
           onClick={() => navigate('/chat')}
-          className="w-full py-4 bg-gradient-to-r from-travel-blue to-travel-green text-white font-semibold text-base rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          className="w-full py-2.5 bg-gradient-to-r from-travel-blue to-travel-green text-white font-medium text-sm rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 animate-breathing hover:brightness-110"
         >
-          <span className="text-xl">💬</span>
+          <span className="text-base">💬</span>
           AI 对话规划（全新）
         </button>
         <p className="text-center text-xs text-travel-muted mt-1.5">
