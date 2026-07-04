@@ -1,6 +1,7 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 langchain==0.3.14
+langchain-core==0.3.63
 langgraph==0.2.61
 langgraph-checkpoint-sqlite==2.0.11
 langchain-openai==0.3.0

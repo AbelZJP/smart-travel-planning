@@ -69,6 +69,8 @@ async def stream_graph_events(
         "node_start_times": {},
         "current_message_id": f"msg_{int(time.time() * 1000)}",
         "current_visible_node": None,
+        "aq_streamed": False,  # answer_question 是否已通过 on_chat_model_stream 流式输出
+        "_dbg": set(),  # 临时调试：记录已打印过的事件类型，定位后删除
     }
 
     HEARTBEAT_INTERVAL = 12  # 秒，需小于 nginx 的 proxy_read_timeout
@@ -129,6 +131,13 @@ async def _process_event(
     data = event.get("data", {})
     event_id = event.get("run_id", "")
 
+    # 临时调试：记录嵌套 runnable 事件是否被捕获（定位 on_chat_model_stream 不触发的问题）
+    if kind in ("on_chat_model_start", "on_chat_model_stream", "on_tool_start", "on_tool_end"):
+        key = (kind, ctx["current_visible_node"])
+        if key not in ctx["_dbg"]:
+            ctx["_dbg"].add(key)
+            print(f"[sse_debug] {kind} | node={ctx['current_visible_node']} | name={name}", flush=True)
+
     try:
         # ── Token 级别 ──
         if kind == "on_chat_model_stream":
@@ -142,6 +151,9 @@ async def _process_event(
             elif isinstance(chunk, dict):
                 token = chunk.get("content", "")
             if token:
+                # 标记 answer_question 已流式输出，供 on_chain_end 判断是否需要兜底
+                if ctx["current_visible_node"] == "answer_question":
+                    ctx["aq_streamed"] = True
                 yield _format_sse("chat_token", {
                     "thread_id": thread_id,
                     "token": token,
@@ -168,9 +180,12 @@ async def _process_event(
                 "duration_ms": duration_ms,
             })
             # 提取节点返回的非流式 AIMessage（present_plan 的引导语、extract_requirements 的追问）
+            # answer_question 优先靠 on_chat_model_stream 流式输出；若该节点未产生流式 token
+            # （部分 LLM 部署不支持流式），在此兜底整条推送，避免回复不显示
             output = data.get("output", {})
             if isinstance(output, dict):
-                if name != "answer_question":
+                emit_full_msg = name != "answer_question" or not ctx.get("aq_streamed")
+                if emit_full_msg:
                     new_msgs = output.get("messages", [])
                     for msg in new_msgs:
                         msg_type = getattr(msg, "type", "")
@@ -180,6 +195,8 @@ async def _process_event(
                                 "thread_id": thread_id,
                                 "token": msg_content,
                             })
+                if name == "answer_question":
+                    ctx["aq_streamed"] = False  # 重置，供下一轮对话使用
 
                 # generate_plan → plan_overview 事件（三档概要）
                 if name == "generate_plan":
