@@ -18,6 +18,7 @@ def get_smart_llm(**kwargs) -> ChatOpenAI:
         "api_key": settings.llm_api_key,
         "base_url": settings.llm_base_url,
         "temperature": 0.7,
+        "streaming": True,
     }
     merged.update(kwargs)
     return ChatOpenAI(**merged)
@@ -35,6 +36,7 @@ def get_fast_llm(**kwargs) -> ChatOpenAI:
         "api_key": settings.llm_api_key,
         "base_url": settings.llm_base_url,
         "temperature": 0.3,
+        "streaming": True,
     }
     merged.update(kwargs)
     return ChatOpenAI(**merged)
