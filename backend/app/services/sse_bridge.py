@@ -10,20 +10,10 @@ LangGraph v0.2.x astream_events(version="v2") 事件类型：
 """
 import asyncio
 import json
-import logging
 import time
 from datetime import datetime
 from typing import AsyncGenerator, Dict, Any
 from app.services.task_manager import task_manager
-
-# SSE bridge 专用日志，独立文件便于排查回调传播问题
-logger = logging.getLogger("sse_bridge")
-logger.setLevel(logging.DEBUG)
-_file_handler = logging.FileHandler("/tmp/sse_bridge_debug.log")
-_file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-logger.handlers.clear()
-logger.addHandler(_file_handler)
-logger.propagate = False
 
 
 # LangGraph 节点名称 → 对外展示名称
@@ -80,7 +70,6 @@ async def stream_graph_events(
         "current_message_id": f"msg_{int(time.time() * 1000)}",
         "current_visible_node": None,
         "aq_streamed": False,  # answer_question 是否已通过 on_chat_model_stream 流式输出
-        "_dbg": set(),  # 临时调试：记录已打印过的事件类型，定位后删除
     }
 
     HEARTBEAT_INTERVAL = 12  # 秒，需小于 nginx 的 proxy_read_timeout
@@ -140,16 +129,6 @@ async def _process_event(
     name = event.get("name", "")
     data = event.get("data", {})
     event_id = event.get("run_id", "")
-
-    # ── 调试日志：记录每个进入 _process_event 的事件 ──
-    logger.debug("EVENT kind=%s name=%s node=%s", kind, name, ctx.get("current_visible_node"))
-
-    # 临时调试：记录嵌套 runnable 事件是否被捕获（定位 on_chat_model_stream 不触发的问题）
-    if kind in ("on_chat_model_start", "on_chat_model_stream", "on_tool_start", "on_tool_end"):
-        key = (kind, ctx["current_visible_node"])
-        if key not in ctx["_dbg"]:
-            ctx["_dbg"].add(key)
-            logger.info("sse_debug %s | node=%s | name=%s", kind, ctx["current_visible_node"], name)
 
     try:
         # ── Token 级别 ──
