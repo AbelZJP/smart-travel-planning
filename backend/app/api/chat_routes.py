@@ -157,7 +157,6 @@ async def send_message(thread_id: str, request: ChatRequest):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
@@ -199,7 +198,6 @@ async def select_tier(thread_id: str, tier: str):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
@@ -246,9 +244,8 @@ async def get_current_plan(thread_id: str):
         raise HTTPException(status_code=500, detail="无法读取规划状态")
 
     plan = snapshot.values.get("plan") if (snapshot and snapshot.values) else None
-    if not plan:
-        raise HTTPException(status_code=404, detail="当前会话还没有行程计划")
-
+    # 没有行程计划是正常状态（纯聊天 / 需求尚未填齐），返回 200 + null。
+    # 避免前端加载历史时因 404 在控制台刷红错误。
     return plan
 
 
