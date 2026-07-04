@@ -199,5 +199,26 @@ async def plan_transport_route(
     return {"mode": mode, "distance_m": 0, "duration_s": 0, "cost_estimated": 0}
 
 
+@tool
+async def geocode(address: str, city: str = "") -> dict:
+    """地址转坐标。需要根据地名查询经纬度时调用（如规划路线前先把地名转成坐标）。
+
+    Args:
+        address: 地址或地名，如"西湖""灵隐寺""北京天安门"
+        city: 所在城市（可选，提高准确性），如"杭州"
+    """
+    try:
+        geo = await amap.geocode(address, city=city or None)
+        lng, lat = geo.get("location", "0,0").split(",")
+        return {
+            "address": address,
+            "lng": float(lng),
+            "lat": float(lat),
+            "formatted": geo.get("formatted_address", ""),
+        }
+    except Exception as e:
+        return {"address": address, "error": str(e)}
+
+
 # 统一导出给 LLM 绑定
-AMAP_TOOLS = [search_attractions, get_weather_forecast, search_hotels, plan_transport_route]
+AMAP_TOOLS = [search_attractions, get_weather_forecast, search_hotels, plan_transport_route, geocode]

@@ -13,6 +13,15 @@ from app.llm.factory import get_smart_llm
 from app.llm.structured import invoke_structured
 
 
+# 偏好码 → 中文展示标签（与 SYSTEM_PROMPT 中的说明保持一致）
+PREFERENCE_LABELS = {
+    "nature": "自然风光",
+    "history": "历史文化",
+    "food": "美食购物",
+    "family": "亲子休闲",
+}
+
+
 class TravelRequirementsExtraction(BaseModel):
     """从对话中提取的旅行需求"""
     origin: Optional[str] = Field(None, description="出发城市，如 '上海'。没提到则为 None")
@@ -128,15 +137,19 @@ def _build_followup_question(missing: list[str], existing: dict) -> str:
     }
     for f, label in field_labels.items():
         val = existing.get(f)
-        if val is not None:
-            if f == "budget":
-                known.append(f"{label}: ¥{val}")
-            elif f == "preferences":
-                known.append(f"{label}: {val}")
-            elif f == "days":
-                known.append(f"{label}: {val}天")
-            else:
-                known.append(f"{label}: {val}")
+        if val is None:
+            continue
+        if f == "budget":
+            known.append(f"{label}: ¥{val}")
+        elif f == "preferences":
+            # 偏好码映射为中文展示，如 ['nature'] → "自然风光"
+            if val:
+                labels = [PREFERENCE_LABELS.get(p, p) for p in val]
+                known.append(f"{label}: {'、'.join(labels)}")
+        elif f == "days":
+            known.append(f"{label}: {val}天")
+        else:
+            known.append(f"{label}: {val}")
 
     known_str = "、".join(known) if known else "暂无"
 

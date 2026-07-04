@@ -36,17 +36,17 @@ const ChatPage: React.FC = () => {
     onError: (error) => console.error('Chat error:', error),
   });
 
-  // 同步工具日志
+  // 同步工具日志到展示态。切换会话/新建/发新消息时 toolCallLogs 会被清空，
+  // 这里随之清空执行摘要，避免残留上一会话的工具调用摘要。
   useEffect(() => {
-    if (toolCallLogs.length > 0) {
-      setChatToolLogs(toolCallLogs);
-    }
+    setChatToolLogs(toolCallLogs);
   }, [toolCallLogs]);
 
   // 历史会话：URL threadId 变化时加载
   useEffect(() => {
     if (!effectiveThreadId) return;
     if (effectiveThreadId === threadId) return;
+    setChatToolLogs([]); // 立即清空上一会话的执行摘要，不等历史加载完成
     setThreadId(effectiveThreadId);
     loadHistory(effectiveThreadId);
     setShowWelcome(false);

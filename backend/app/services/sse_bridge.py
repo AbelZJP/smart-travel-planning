@@ -42,6 +42,7 @@ TOOL_DISPLAY_NAMES = {
     "get_weather_forecast": "查询天气",
     "search_hotels": "推荐酒店",
     "plan_transport_route": "规划路线",
+    "geocode": "地理编码",
 }
 
 

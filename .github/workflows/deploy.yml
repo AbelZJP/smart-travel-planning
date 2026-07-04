@@ -60,7 +60,7 @@ jobs:
       - name: Rsync Backend
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avz --delete --exclude='venv' --exclude='__pycache__' --exclude='.env'
+          switches: -avz --delete --exclude='venv' --exclude='__pycache__' --exclude='.env' --exclude='*.db' --exclude='*.db-shm' --exclude='*.db-wal'
           path: backend/
           remote_path: /opt/travel-planning/
           remote_host: ${{ secrets.SERVER_IP }}
